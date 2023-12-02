@@ -21,7 +21,7 @@ const ModalOverlay = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000; // High z-index to ensure it's on top of other elements
+  z-index: 1000;
 `;
 
 const ModalContent = styled.div`
