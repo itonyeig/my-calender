@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, format } from 'date-fns';
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, format } from 'date-fns';
 import fetchWorldwideHolidays from '../utils/fetchHolidays';
 import styled from '@emotion/styled';
 import { Holiday } from '../interfaces/Holiday';
 
+interface CalendarProps {
+  onDayClick: (date: string) => void;
+}
 
 const Grid = styled.div`
   display: grid;
@@ -17,6 +20,7 @@ const DayCell = styled.div`
   background-color: #fff; 
   border: 1px solid #e5e5e5; 
   padding: 8px;
+  cursor: pointer;
 `;
 
 const HolidayName = styled.div`
@@ -26,47 +30,37 @@ const HolidayName = styled.div`
   font-size: 0.8em;
 `;
 
+const Calendar: React.FC<CalendarProps> = ({ onDayClick }) => {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
 
+  useEffect(() => {
+    const currentYear = currentMonth.getFullYear();
+    fetchWorldwideHolidays(currentYear).then(setHolidays);
+  }, [currentMonth]);
 
-const Calendar = () => {
-    const [currentMonth, setCurrentMonth] = useState(new Date());
-    const [holidays, setHolidays] = useState<Holiday[]>([]);
-  
-    useEffect(() => {
-      const currentYear = currentMonth.getFullYear();
-      fetchWorldwideHolidays(currentYear).then(setHolidays);
-    }, [currentMonth]);
-  
-    const startDay = startOfWeek(startOfMonth(currentMonth));
-    const endDay = endOfWeek(endOfMonth(currentMonth));
-    const monthDays = eachDayOfInterval({ start: startDay, end: endDay });
-  
-    return (
-        <Grid>
-          {monthDays.map((day, index) => {
-            const formattedDate = format(day, 'yyyy-MM-dd');
-            //shows all holidays for that day
-            // const dayHolidays = holidays.filter(holiday => holiday.date === formattedDate);
+  const startDay = startOfWeek(startOfMonth(currentMonth));
+  const endDay = endOfWeek(endOfMonth(currentMonth));
+  const monthDays = eachDayOfInterval({ start: startDay, end: endDay });
 
-            //show only one holiday for that day
-            const holiday = holidays.find(holiday => holiday.date === formattedDate);
+  return (
+    <Grid>
+      {monthDays.map((day, index) => {
+        const formattedDate = format(day, 'yyyy-MM-dd');
+        const holiday = holidays.find(holiday => holiday.date === formattedDate);
 
-            // api returns 'christmas eve for holiday name on 27 for some reason, so I added this condition
-            const isDecember27 = formattedDate.endsWith('-12-27');
-            const holidayText = isDecember27 ? holiday?.localName : holiday?.name;
+        const isDecember27 = formattedDate.endsWith('-12-27');
+        const holidayText = isDecember27 ? holiday?.localName : holiday?.name;
 
-            return (
-            <DayCell key={index}>
-                <div>{day.getDate()}</div>
-                {holiday && <HolidayName>{holidayText}</HolidayName>}
-            </DayCell>
-            );
-      
-            
-          })}
-        </Grid>
-      );
-      ;
-  };  
+        return (
+          <DayCell key={index} onClick={() => onDayClick(formattedDate)}>
+            <div>{day.getDate()}</div>
+            {holiday && <HolidayName>{holidayText}</HolidayName>}
+          </DayCell>
+        );
+      })}
+    </Grid>
+  );
+};
 
 export default Calendar;
