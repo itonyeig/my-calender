@@ -64,6 +64,8 @@ const App: React.FC = () => {
         onDayClick={handleDayClick} 
         tasks={tasks} 
         onTaskClick={handleTaskClick}
+        setTasks={setTasks}
+
       />
       {isModalOpen && (
         <TaskModal
