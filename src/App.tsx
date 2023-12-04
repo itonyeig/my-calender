@@ -16,47 +16,58 @@ export const useTasks = () => {
 
 const App: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoadedFromStorage, setIsLoadedFromStorage] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   useEffect(() => {
     const storedTasks = localStorage.getItem('tasks');
     if (storedTasks) {
       setTasks(JSON.parse(storedTasks));
     }
+    setIsLoadedFromStorage(true);
   }, []);
-
+  
   useEffect(() => {
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-  }, [tasks]);
+    if (isLoadedFromStorage) {
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+  }, [tasks, isLoadedFromStorage]);
 
   const handleDayClick = (date: string) => {
-    console.log("Day clicked:", date); // Add this to check if the function is called
-    setSelectedDate(date);
+    const newTask = { id: '', title: '', description: '', labels: [], date: date };
+    setSelectedTask(newTask);
     setIsModalOpen(true);
   };
 
-  const handleSaveTask = (task: Task) => {
-    setTasks(currentTasks => {
-      if (task.id) {
-        return currentTasks.map(t => t.id === task.id ? { ...t, ...task } : t);
-      } else {
-        const newTask = {
-          ...task,
-          id: crypto.getRandomValues(new Uint32Array(1))[0].toString(16)
-        };
-        return [...currentTasks, newTask];
-      }
-    });
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
+    setIsModalOpen(true);
+  };
+
+  const handleSaveTask = (enteredTask: Task) => {
+    if (enteredTask.id) {
+      // Update existing task
+      setTasks(currentTasks => currentTasks.map(task => task.id === enteredTask.id ? { ...task, ...enteredTask } : task));
+    } else {
+      // Add new task
+      const newTask = { ...enteredTask, id: crypto.getRandomValues(new Uint32Array(1))[0].toString(16) };
+      setTasks(currentTasks => [...currentTasks, newTask]);
+    }
     setIsModalOpen(false);
+    setSelectedTask(null);
   };
 
   return (
     <TaskContext.Provider value={{ tasks, setTasks }}>
-      <Calendar onDayClick={handleDayClick} />
+      <Calendar 
+        onDayClick={handleDayClick} 
+        tasks={tasks} 
+        onTaskClick={handleTaskClick}
+      />
       {isModalOpen && (
         <TaskModal
-          task={{ id: '', title: '', description: '', labels: [], date: selectedDate }}
+          task={selectedTask}
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           onSave={handleSaveTask}

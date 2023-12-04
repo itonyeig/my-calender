@@ -52,7 +52,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, isOpen, onClose, onSave }) 
               {errors.title && touched.title ? <div>{errors.title}</div> : null}
 
               <Field name="description" as="textarea" placeholder="Description" />
-              
+
               {/* Label and date fields go here */}
               
               <button type="submit">Save Task</button>
@@ -64,5 +64,6 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, isOpen, onClose, onSave }) 
     </ModalOverlay>
   );
 };
+
 
 export default TaskModal;

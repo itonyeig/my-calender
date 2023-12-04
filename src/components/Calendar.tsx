@@ -3,9 +3,12 @@ import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, fo
 import fetchWorldwideHolidays from '../utils/fetchHolidays';
 import styled from '@emotion/styled';
 import { Holiday } from '../interfaces/Holiday';
+import { Task } from '../interfaces/Task';
 
 interface CalendarProps {
   onDayClick: (date: string) => void;
+  tasks: Task[];
+  onTaskClick: (task: Task) => void;
 }
 
 const Grid = styled.div`
@@ -30,7 +33,14 @@ const HolidayName = styled.div`
   font-size: 0.8em;
 `;
 
-const Calendar: React.FC<CalendarProps> = ({ onDayClick }) => {
+const TaskItem = styled.div`
+  margin-top: 4px;
+  padding: 4px;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+`;
+
+const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [holidays, setHolidays] = useState<Holiday[]>([]);
 
@@ -47,15 +57,27 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick }) => {
     <Grid>
       {monthDays.map((day, index) => {
         const formattedDate = format(day, 'yyyy-MM-dd');
+        const dayTasks = tasks.filter(task => task.date === formattedDate);
         const holiday = holidays.find(holiday => holiday.date === formattedDate);
 
         const isDecember27 = formattedDate.endsWith('-12-27');
         const holidayText = isDecember27 ? holiday?.localName : holiday?.name;
 
         return (
-          <DayCell key={index} onClick={() => onDayClick(formattedDate)}>
+          <DayCell key={index} onClick={() => onDayClick(format(day, 'yyyy-MM-dd'))}>
             <div>{day.getDate()}</div>
             {holiday && <HolidayName>{holidayText}</HolidayName>}
+            {dayTasks.map(task => (
+              <TaskItem 
+                key={task.id} 
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevents the DayCell's onClick from firing
+                  onTaskClick(task);
+                }}
+              >
+                {task.title}
+              </TaskItem>
+            ))}
           </DayCell>
         );
       })}
