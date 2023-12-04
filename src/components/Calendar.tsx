@@ -7,7 +7,6 @@ import { Holiday } from '../interfaces/Holiday';
 import { Task } from '../interfaces/Task';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 
-
 const Grid = styled.div`
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -16,9 +15,9 @@ const Grid = styled.div`
 `;
 
 const DayCell = styled.div`
-  min-height: 100px; 
-  background-color: #fff; 
-  border: 1px solid #e5e5e5; 
+  min-height: 100px;
+  background-color: #fff;
+  border: 1px solid #e5e5e5;
   padding: 8px;
   cursor: pointer;
   &:hover {
@@ -42,17 +41,17 @@ const TaskItem = styled.div<TaskItemProps>`
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
 `;
 
+const SearchBar = styled.input`
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+`;
+
 interface TaskItemProps {
   isDragging: boolean;
 }
-
-interface CalendarProps {
-  onDayClick: (date: string) => void;
-  tasks: Task[];
-  onTaskClick: (task: Task) => void;
-  setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
-}
-
 
 interface CalendarProps {
   onDayClick: (date: string) => void;
@@ -65,7 +64,8 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [allowClick, setAllowClick] = useState(true); // New state to control click behavior
+  const [searchQuery, setSearchQuery] = useState("");
+
 
   useEffect(() => {
     const currentYear = currentMonth.getFullYear();
@@ -76,10 +76,19 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
   const endDay = endOfWeek(endOfMonth(currentMonth));
   const monthDays = eachDayOfInterval({ start: startDay, end: endDay });
 
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
+  };  
+
+  const filteredTasks = searchQuery.length === 0 
+  ? tasks 
+  : tasks.filter(task => 
+    task.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+
   const onDragEnd = (result: DropResult) => {
     setIsDragging(false);
-    setTimeout(() => setAllowClick(true), 100); // Enable click after a short delay
-
     const { source, destination } = result;
   
     if (!destination || (source.droppableId === destination.droppableId && source.index === destination.index)) {
@@ -100,7 +109,6 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
 
   const onDragStart = () => {
     setIsDragging(true);
-    setAllowClick(false);
   };
 
   return (
@@ -112,23 +120,31 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
           }
         `}
       />
+      <SearchBar 
+        type="text" 
+        placeholder="Search tasks..." 
+        value={searchQuery}
+        onChange={handleSearchChange} 
+      />
       <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
         <Grid>
           {monthDays.map((day, dayIndex) => {
             const formattedDate = format(day, 'yyyy-MM-dd');
-            const dayTasks = tasks.filter(task => task.date === formattedDate);
+            const dayTasks = filteredTasks.filter(task => task.date === formattedDate);
             const holiday = holidays.find(holiday => holiday.date === formattedDate);
-  
+            const isDecember27 = formattedDate.endsWith('-12-27');
+            const holidayText = isDecember27 ? holiday?.localName : holiday?.name;
+
             return (
               <Droppable droppableId={formattedDate} key={dayIndex}>
                 {(provided) => (
                   <DayCell 
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    onClick={() => onDayClick(formattedDate)}
+                    onClick={() => !isDragging && onDayClick(formattedDate)}
                   >
                     <div>{day.getDate()}</div>
-                    {holiday && <HolidayName>{holiday.name}</HolidayName>}
+                    {holiday && <HolidayName>{holidayText}</HolidayName>}
                     {dayTasks.map((task, taskIndex) => (
                       <Draggable key={task.id} draggableId={task.id} index={taskIndex}>
                         {(provided, snapshot) => (
@@ -159,7 +175,7 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
       </DragDropContext>
     </>
   );
-  
 };
+
 
 export default Calendar;
