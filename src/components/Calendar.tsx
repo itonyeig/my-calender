@@ -78,9 +78,41 @@ const HeaderContainer = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem;
+  height: 60px; // Fixed height for the header
+  padding: 1rem;
   background-color: #f3f3f3;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  
+  button {
+    height: 40px; // Fixed height for buttons
+    line-height: 40px; // Center text vertically
+    background-color: #FFC436;
+    color: white;
+    border: none;
+    padding: 0 1rem; // Adjust padding as necessary
+    margin-right: 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    box-sizing: border-box; // Include padding and border in the width and height
+    
+    &:hover {
+      background-color: #E9B824;
+    }
+  }
+
+  input[type='text'] {
+    width: 25%;
+    height: 40px; // Match input height with button height
+    padding: 0 0.5rem; // Adjust padding to not affect height
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box; // Include padding and border in the width and height
+  }
 `;
+
+
+
+
 
 const Dropdown = styled.div`
   position: relative;
@@ -287,11 +319,21 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
   return (
     <>
       <Global 
-        styles={css`
-          body {
-            cursor: ${isDragging ? "grabbing" : "default"};
-          }
-        `}
+       styles={css`
+       body {
+         margin: 0;
+         padding: 0;
+         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+           'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+           sans-serif;
+         -webkit-font-smoothing: antialiased;
+         -moz-osx-font-smoothing: grayscale;
+       }
+
+       #root {
+         padding: 20px;
+       }
+     `}
       />
       <HeaderContainer>
         <SearchBar
@@ -375,10 +417,14 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     onClick={() => !isDragging && onDayClick(formattedDate)}
-                    style={{
-                      backgroundColor: dayInCurrentMonth ? '#fff' : '#f0f0f0',
-                      color: dayInCurrentMonth ? 'initial' : '#d3d3d3',
-                    }}
+                    style={
+                      !dayInCurrentMonth
+                        ? {
+                            backgroundColor: '#f0f0f0',
+                            color: '#d3d3d3'
+                          }
+                        : {}
+                    }
                   >
                     <div>{day.getDate()}</div>
                     {holiday && <HolidayName>{holidayText}</HolidayName>}
