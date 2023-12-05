@@ -69,7 +69,7 @@ const LabelManager: React.FC = () => {
   
     return (
       <LabelManagerContainer>
-        <h2>Manage Labels</h2>
+        <h2>Create Labels</h2>
         <div>
           <LabelInput
             type="text"

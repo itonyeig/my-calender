@@ -15,25 +15,76 @@ interface TaskModalProps {
   onSave: (task: Task) => void;
 }
 
-const ModalOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+const StyledForm = styled(Form)`
+  margin-left: 32px; 
+  margin-right: 32px; 
   display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+  flex-direction: column;
 `;
 
-const ModalContent = styled.div`
-  background-color: white;
-  padding: 20px;
-  border-radius: 5px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+const StyledField = styled(Field)`
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 8px;
+  border: 1px solid #FFC436;
+  border-radius: 4px;
+
 `;
+
+const StyledTextArea = styled(StyledField)`
+  height: 100px;
+  resize: vertical;
+`;
+
+const StyledCheckboxContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+`;
+
+const StyledCheckboxLabel = styled.label`
+  display: flex;
+  align-items: center;
+  margin-right: 12px;
+  cursor: pointer;
+
+  // Custom styling for checkbox here if needed
+  input[type="checkbox"] {
+    margin-right: 4px;
+  }
+`;
+
+const StyledButton = styled.button`
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  margin-right: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  
+
+  &:first-of-type {
+    background-color: #FFC436;
+    color: white;
+    margin-left: 32px; 
+  }
+
+  &:last-of-type {
+    background-color: #6c757d;
+    color: white;
+  }
+
+  &:hover {
+    opacity: 0.85;
+  }
+`;
+
+const StyledErrorMessage = styled.div`
+  color: red;
+  font-size: 0.8rem;
+  margin-bottom: 8px;
+`;
+
 
 const TaskModal: React.FC<TaskModalProps> = ({ task, isOpen, onClose, onSave }) => {
   const { labels } = useLabels();
@@ -46,45 +97,48 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, isOpen, onClose, onSave }) 
           initialValues={task || { id: '', title: '', description: '', labelIds: [], date: '' }}
           validationSchema={taskSchema}
           onSubmit={(values, actions) => {
-            onSave(values as Task); // Ensure values are cast to Task type
+            onSave(values as Task);
             actions.setSubmitting(false);
             onClose();
           }}
         >
           {({ errors, touched, values, setFieldValue }) => (
             <Form>
-              <Field name="title" type="text" placeholder="Title" />
-              {errors.title && touched.title ? <div>{errors.title}</div> : null}
-
-              <Field name="description" as="textarea" placeholder="Description" />
-
-              {/* Label Selection */}
-              <div>
-                {labels.map((label: Label) => (
-                  <label key={label.id}>
-                    <input
-                      type="checkbox"
-                      name="labelIds"
-                      value={label.id}
-                      checked={values.labelIds.includes(label.id)}
-                      onChange={() => {
-                        const set = new Set(values.labelIds);
-                        if (set.has(label.id)) {
-                          set.delete(label.id);
-                        } else {
-                          set.add(label.id);
-                        }
-                        setFieldValue('labelIds', Array.from(set));
-                      }}
-                    />
-                    {label.name}
-                  </label>
-                ))}
-              </div>
-              
-              <button type="submit">Save Task</button>
-              <button type="button" onClick={onClose}>Cancel</button>
-            </Form>
+              <StyledForm>
+              <StyledField name="title" type="text" placeholder="Title" />
+            {errors.title && touched.title ? <StyledErrorMessage>{errors.title}</StyledErrorMessage> : null}
+          
+            <StyledTextArea name="description" as="textarea" placeholder="Description" />
+          
+            {/* Label Selection */}
+            <StyledCheckboxContainer>
+              {labels.map((label: Label) => (
+                <StyledCheckboxLabel key={label.id}>
+                  <input
+                    type="checkbox"
+                    name="labelIds"
+                    value={label.id}
+                    checked={values.labelIds.includes(label.id)}
+                    onChange={() => {
+                      const set = new Set(values.labelIds);
+                      if (set.has(label.id)) {
+                        set.delete(label.id);
+                      } else {
+                        set.add(label.id);
+                      }
+                      setFieldValue('labelIds', Array.from(set));
+                    }}
+                  />
+                  {label.name}
+                </StyledCheckboxLabel>
+              ))}
+            </StyledCheckboxContainer>
+            
+            
+              </StyledForm>
+              <StyledButton type="submit">Save Task</StyledButton>
+            <StyledButton type="button" onClick={onClose}>Cancel</StyledButton>
+          </Form>
           )}
         </Formik>
     </Modal>

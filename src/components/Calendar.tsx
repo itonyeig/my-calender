@@ -78,22 +78,25 @@ const HeaderContainer = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 60px; // Fixed height for the header
+  height: 60px;
   padding: 1rem;
   background-color: #f3f3f3;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  
+
+  button, input[type='text'], .dropdown-button {
+    height: 40px;
+    line-height: 40px;
+    box-sizing: border-box;
+    margin-right: 0.5rem;
+  }
+
   button {
-    height: 40px; // Fixed height for buttons
-    line-height: 40px; // Center text vertically
     background-color: #FFC436;
     color: white;
     border: none;
-    padding: 0 1rem; // Adjust padding as necessary
-    margin-right: 0.5rem;
+    padding: 0 1rem;
     border-radius: 4px;
     cursor: pointer;
-    box-sizing: border-box; // Include padding and border in the width and height
     
     &:hover {
       background-color: #E9B824;
@@ -102,11 +105,36 @@ const HeaderContainer = styled.div`
 
   input[type='text'] {
     width: 25%;
-    height: 40px; // Match input height with button height
-    padding: 0 0.5rem; // Adjust padding to not affect height
+    padding: 0 0.5rem;
     border: 1px solid #ccc;
     border-radius: 4px;
-    box-sizing: border-box; // Include padding and border in the width and height
+  }
+
+  .dropdown-button {
+    padding: 10px;
+    cursor: pointer;
+  }
+`;
+
+const CommonButton = styled.button`
+  height: 40px;
+  line-height: 40px;
+  background-color: #FFC436;
+  color: white;
+  border: none;
+  padding: 0 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 0.5rem;
+  box-sizing: border-box;
+  margin-bottom: 10px;f
+
+  &:hover {
+    background-color: #E9B824;
+  }
+
+  &:last-child {
+    margin-right: 0;
   }
 `;
 
@@ -114,14 +142,15 @@ const HeaderContainer = styled.div`
 
 
 
-const Dropdown = styled.div`
-  position: relative;
-`;
-
 const DropdownButton = styled.button`
   padding: 10px;
   margin-bottom: 10px;
   cursor: pointer;
+`;
+
+const Dropdown = styled.div`
+  position: relative;
+  display: inline-block;
 `;
 
 const DropdownContent = styled.div`
@@ -130,10 +159,23 @@ const DropdownContent = styled.div`
   min-width: 160px;
   box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
   z-index: 1;
+  border-radius: 4px;
   display: none;
+  left: 50%;
+  transform: translateX(-50%);
 
   &.show {
     display: block;
+  }
+
+  div {
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+
+    &:hover {
+      background-color: #E9B824;
+    }
   }
 `;
 
@@ -141,7 +183,14 @@ const CheckboxLabel = styled.label`
   display: block;
   padding: 10px;
   cursor: pointer;
+  text-align: center;
+  border-radius: 4px; 
+
+  &:hover {
+    background-color: #E9B824;
+  }
 `;
+
 
 
 
@@ -172,6 +221,8 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const monthDropdownRef = useRef<HTMLInputElement>(null);
+  const yearDropdownRef = useRef<HTMLInputElement>(null);
   const calendarRef = useRef(null);
 
   const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -187,6 +238,13 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
       }
+       if (monthDropdownRef.current && !monthDropdownRef.current.contains(event.target as Node)) {
+      setShowMonthDropdown(false);
+    }
+        if (yearDropdownRef.current && !yearDropdownRef.current.contains(event.target as Node)) {
+          setShowYearDropdown(false);
+        }
+  
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -342,7 +400,7 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
           value={searchQuery}
           onChange={handleSearchChange}
         />
-        <Dropdown>
+        <Dropdown ref={monthDropdownRef}>
           <DropdownButton onClick={() => setShowMonthDropdown(!showMonthDropdown)}>
             {format(currentMonth, "MMMM")}
           </DropdownButton>
@@ -355,7 +413,7 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
           )}
         </Dropdown>
 
-        <Dropdown>
+        <Dropdown ref={yearDropdownRef}>
           <DropdownButton onClick={() => setShowYearDropdown(!showYearDropdown)}>
             {format(currentMonth, "yyyy")}
           </DropdownButton>
@@ -367,7 +425,7 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
             </DropdownContent>
           )}
         </Dropdown>
-        <button onClick={() => setIsLabelModalOpen(true)}>Manage Labels</button>
+        <CommonButton onClick={() => setIsLabelModalOpen(true)}>Create Label</CommonButton>
         <Dropdown ref={dropdownRef}>
         <DropdownButton onClick={() => setShowDropdown(!showDropdown)}>Filter by Labels</DropdownButton>
         {showDropdown && (
@@ -385,17 +443,17 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
           </DropdownContent>
         )}
       </Dropdown>
-      <button onClick={handleExport}>Export Calendar</button>
+      <CommonButton onClick={handleExport}>Export Calendar</CommonButton>
       <input
         type="file"
         onChange={handleImport}
         style={{ display: 'none' }}
         ref={fileInputRef}
       />
-      <button onClick={() => fileInputRef.current?.click()}>
+      <CommonButton onClick={() => fileInputRef.current?.click()}>
         Import Calendar
-      </button>
-      <button onClick={handleDownloadImage}>Download Calendar as Image</button>
+      </CommonButton>
+      <CommonButton onClick={handleDownloadImage}>Download Calendar as Image</CommonButton>
       </HeaderContainer>
        {/* Label Management Modal */}
        {isLabelModalOpen && (
