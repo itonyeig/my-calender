@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import html2canvas from 'html2canvas';
+import React, { useState, useEffect, useRef } from 'react';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, format } from 'date-fns';
 import fetchWorldwideHolidays from '../utils/fetchHolidays';
 import styled from '@emotion/styled';
@@ -6,6 +7,30 @@ import { Global, css } from '@emotion/react';
 import { Holiday } from '../interfaces/Holiday';
 import { Task } from '../interfaces/Task';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { LabelCreationModal } from './LabelCreationModal';
+import { useLabels } from '../contexts/LabelContext';
+import { generateUniqueId } from '../utils/helper';
+
+const LabelContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+`;
+
+const LabelTag = styled.span<{ color: string, dynamicWidth?: string }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: ${({ dynamicWidth }) => dynamicWidth || '6.25rem'};
+  padding: 2px 6px;
+  border-radius: 12px;
+  background-color: ${({ color }) => color};
+  color: #fff;
+  margin-bottom: 4px;
+  flex: 1;
+  max-width: 100%;
+`;
 
 const Grid = styled.div`
   display: grid;
@@ -32,7 +57,7 @@ const HolidayName = styled.div`
   font-size: 0.8em;
 `;
 
-const TaskItem = styled.div<TaskItemProps>`
+const TaskItem = styled.div<TaskItemProps & { labelIds: string[] }>`
   margin-top: 4px;
   padding: 4px;
   background-color: #e0e0e0;
@@ -48,6 +73,46 @@ const SearchBar = styled.input`
   border: 1px solid #ccc;
   border-radius: 4px;
 `;
+
+const HeaderContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background-color: #f3f3f3;
+`;
+
+const Dropdown = styled.div`
+  position: relative;
+`;
+
+const DropdownButton = styled.button`
+  padding: 10px;
+  margin-bottom: 10px;
+  cursor: pointer;
+`;
+
+const DropdownContent = styled.div`
+  position: absolute;
+  background-color: #f9f9f9;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 1;
+  display: none;
+
+  &.show {
+    display: block;
+  }
+`;
+
+const CheckboxLabel = styled.label`
+  display: block;
+  padding: 10px;
+  cursor: pointer;
+`;
+
+
+
 
 interface TaskItemProps {
   isDragging: boolean;
@@ -65,26 +130,69 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-
+  const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const { labels } = useLabels();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const calendarRef = useRef(null);
 
   useEffect(() => {
     const currentYear = currentMonth.getFullYear();
     fetchWorldwideHolidays(currentYear).then(setHolidays);
   }, [currentMonth]);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+
   const startDay = startOfWeek(startOfMonth(currentMonth));
   const endDay = endOfWeek(endOfMonth(currentMonth));
   const monthDays = eachDayOfInterval({ start: startDay, end: endDay });
+
+  const handleDownloadImage = async () => {
+    const calendarElement = calendarRef.current;
+    if (calendarElement) {
+      const canvas = await html2canvas(calendarElement);
+      const image = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = image;
+      link.download = 'calendar.png';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+  
+
+  const handleLabelFilterChange = (labelId: string) => {
+    setSelectedLabels(prev => {
+      if (prev.includes(labelId)) {
+        return prev.filter(id => id !== labelId);
+      } else {
+        return [...prev, labelId];
+      }
+    });
+  };
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
   };  
 
-  const filteredTasks = searchQuery.length === 0 
-  ? tasks 
-  : tasks.filter(task => 
-    task.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredTasks = tasks.filter(task => {
+    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesLabels = selectedLabels.length === 0 || task.labelIds.some(id => selectedLabels.includes(id));
+    return matchesSearch && matchesLabels;
+  });
 
 
   const onDragEnd = (result: DropResult) => {
@@ -111,6 +219,45 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
     setIsDragging(true);
   };
 
+  const handleExport = () => {
+    
+    const dataStr = JSON.stringify(tasks);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const exportFileName = 'calendar-data.json';
+  
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileName);
+    linkElement.click();
+  };
+
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const fileReader = new FileReader();
+    const file = event.target.files?.[0]; 
+
+    console.log('file ', file);
+    
+    if (file) {
+      fileReader.readAsText(file, "UTF-8");
+      fileReader.onload = e => {
+        const content = e.target?.result;
+        
+        if (typeof content === 'string') { 
+          try {
+            const data: Task[] = JSON.parse(content);
+            const importedData = data.map(task => ({...task, id: generateUniqueId()}))
+            console.log('imported tasks ', importedData)
+            setTasks(currentTasks => [...currentTasks, ...importedData]);
+          } catch (error) {
+            console.error('Error importing data: ', error);
+          }
+        }
+      };
+    }
+  };
+  
+  
+
   return (
     <>
       <Global 
@@ -120,12 +267,49 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
           }
         `}
       />
-      <SearchBar 
-        type="text" 
-        placeholder="Search tasks..." 
-        value={searchQuery}
-        onChange={handleSearchChange} 
+      <HeaderContainer>
+        <SearchBar
+          type="text"
+          placeholder="Search tasks..."
+          value={searchQuery}
+          onChange={handleSearchChange}
+        />
+        {/* Placeholder for Year and Month dropdowns */}
+        {/* Implement the dropdowns here */}
+        <button onClick={() => setIsLabelModalOpen(true)}>Manage Labels</button>
+        <Dropdown ref={dropdownRef}>
+        <DropdownButton onClick={() => setShowDropdown(!showDropdown)}>Filter by Labels</DropdownButton>
+        {showDropdown && (
+          <DropdownContent className="show">
+            {labels.map(label => (
+          <CheckboxLabel key={label.id}>
+            <input
+              type="checkbox"
+              checked={selectedLabels.includes(label.id)}
+              onChange={() => handleLabelFilterChange(label.id)}
+            />
+            {label.name}
+          </CheckboxLabel>
+        ))}
+          </DropdownContent>
+        )}
+      </Dropdown>
+      <button onClick={handleExport}>Export Calendar</button>
+      <input
+        type="file"
+        onChange={handleImport}
+        style={{ display: 'none' }}
+        ref={fileInputRef}
       />
+      <button onClick={() => fileInputRef.current?.click()}>
+        Import Calendar
+      </button>
+      <button onClick={handleDownloadImage}>Download Calendar as Image</button>
+      </HeaderContainer>
+       {/* Label Management Modal */}
+       {isLabelModalOpen && (
+        <LabelCreationModal onClose={() => setIsLabelModalOpen(false)} />
+      )}
       <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
         <Grid>
           {monthDays.map((day, dayIndex) => {
@@ -147,20 +331,44 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
                     {holiday && <HolidayName>{holidayText}</HolidayName>}
                     {dayTasks.map((task, taskIndex) => (
                       <Draggable key={task.id} draggableId={task.id} index={taskIndex}>
-                        {(provided, snapshot) => (
-                          <TaskItem 
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
+                        {(dragProvided, snapshot) => (
+                          <TaskItem
+                            ref={dragProvided.innerRef}
+                            {...dragProvided.draggableProps}
+                            {...dragProvided.dragHandleProps}
                             isDragging={snapshot.isDragging}
+                            labelIds={task.labelIds} 
                             onClick={(e) => {
                               if (!snapshot.isDragging) {
                                 e.stopPropagation();
                                 onTaskClick(task);
                               }
                             }}
-                          >
+                        >
+                          <LabelContainer>
+                            {task.labelIds.map((labelId, index, array) => {
+                              const label = labels.find((label) => label.id === labelId);
+                              
+                              const containerWidth = 100;
+
+                              const totalSpacing = (array.length * 10) + ((array.length - 1) * 10);
+                              const availableWidth = containerWidth - totalSpacing;
+
+                              const dynamicWidth = availableWidth / array.length;
+
+                              return label ? (
+                                <LabelTag 
+                                  key={label.id} 
+                                  color={label.color} 
+                                  dynamicWidth={`${dynamicWidth}px`}>
+                                </LabelTag>
+                              ) : null;
+                            })}
+                          </LabelContainer>
+
+
                             {task.title}
+                            
                           </TaskItem>
                         )}
                       </Draggable>
@@ -170,6 +378,7 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
                 )}
               </Droppable>
             );
+    
           })}
         </Grid>
       </DragDropContext>

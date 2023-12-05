@@ -2,6 +2,9 @@ import React, { useState, useEffect, createContext, useContext } from 'react';
 import Calendar from './components/Calendar';
 import TaskModal from './components/TaskModal';
 import { Task } from './interfaces/Task';
+import { generateUniqueId } from './utils/helper';
+import { LabelProvider } from './contexts/LabelProvider';
+
 
 const TaskContext = createContext<{
   tasks: Task[];
@@ -35,7 +38,7 @@ const App: React.FC = () => {
   }, [tasks, isLoadedFromStorage]);
 
   const handleDayClick = (date: string) => {
-    const newTask = { id: '', title: '', description: '', labels: [], date: date };
+    const newTask = { id: '', title: '', description: '', labelIds: [], date: date };
     setSelectedTask(newTask);
     setIsModalOpen(true);
   };
@@ -47,11 +50,9 @@ const App: React.FC = () => {
 
   const handleSaveTask = (enteredTask: Task) => {
     if (enteredTask.id) {
-      // Update existing task
       setTasks(currentTasks => currentTasks.map(task => task.id === enteredTask.id ? { ...task, ...enteredTask } : task));
     } else {
-      // Add new task
-      const newTask = { ...enteredTask, id: crypto.getRandomValues(new Uint32Array(1))[0].toString(16) };
+      const newTask = { ...enteredTask, id: generateUniqueId() };
       setTasks(currentTasks => [...currentTasks, newTask]);
     }
     setIsModalOpen(false);
@@ -59,23 +60,26 @@ const App: React.FC = () => {
   };
 
   return (
-    <TaskContext.Provider value={{ tasks, setTasks }}>
-      <Calendar 
-        onDayClick={handleDayClick} 
-        tasks={tasks} 
-        onTaskClick={handleTaskClick}
-        setTasks={setTasks}
+    <LabelProvider>
+      <TaskContext.Provider value={{ tasks, setTasks }}>
+        <Calendar 
+          onDayClick={handleDayClick} 
+          tasks={tasks} 
+          onTaskClick={handleTaskClick}
+          setTasks={setTasks}
 
-      />
-      {isModalOpen && (
-        <TaskModal
-          task={selectedTask}
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSave={handleSaveTask}
         />
-      )}
+        {isModalOpen && (
+          <TaskModal
+            task={selectedTask}
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            onSave={handleSaveTask}
+          />
+        )}
     </TaskContext.Provider>
+    </LabelProvider>
+  
   );
 };
 

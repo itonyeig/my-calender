@@ -3,6 +3,10 @@ import { Formik, Form, Field } from 'formik';
 import { taskSchema } from '../validation/taskSchema';
 import { Task } from '../interfaces/Task';
 import styled from '@emotion/styled';
+import { useLabels } from '../contexts/LabelContext';
+import { Label } from '../interfaces/Label';
+import { Modal } from './Modal';
+
 
 interface TaskModalProps {
   task: Task | null;
@@ -32,38 +36,59 @@ const ModalContent = styled.div`
 `;
 
 const TaskModal: React.FC<TaskModalProps> = ({ task, isOpen, onClose, onSave }) => {
+  const { labels } = useLabels();
+
   if (!isOpen) return null;
 
   return (
-    <ModalOverlay>
-      <ModalContent>
-        <Formik
-          initialValues={task || { id: '', title: '', description: '', labels: [], date: '' }}
+    <Modal onClose={onClose}>
+      <Formik
+          initialValues={task || { id: '', title: '', description: '', labelIds: [], date: '' }}
           validationSchema={taskSchema}
           onSubmit={(values, actions) => {
-            onSave(values);
+            onSave(values as Task); // Ensure values are cast to Task type
             actions.setSubmitting(false);
             onClose();
           }}
         >
-          {({ errors, touched }) => (
+          {({ errors, touched, values, setFieldValue }) => (
             <Form>
               <Field name="title" type="text" placeholder="Title" />
               {errors.title && touched.title ? <div>{errors.title}</div> : null}
 
               <Field name="description" as="textarea" placeholder="Description" />
 
-              {/* Label and date fields go here */}
+              {/* Label Selection */}
+              <div>
+                {labels.map((label: Label) => (
+                  <label key={label.id}>
+                    <input
+                      type="checkbox"
+                      name="labelIds"
+                      value={label.id}
+                      checked={values.labelIds.includes(label.id)}
+                      onChange={() => {
+                        const set = new Set(values.labelIds);
+                        if (set.has(label.id)) {
+                          set.delete(label.id);
+                        } else {
+                          set.add(label.id);
+                        }
+                        setFieldValue('labelIds', Array.from(set));
+                      }}
+                    />
+                    {label.name}
+                  </label>
+                ))}
+              </div>
               
               <button type="submit">Save Task</button>
               <button type="button" onClick={onClose}>Cancel</button>
             </Form>
           )}
         </Formik>
-      </ModalContent>
-    </ModalOverlay>
+    </Modal>
   );
 };
-
 
 export default TaskModal;
