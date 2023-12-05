@@ -1,6 +1,6 @@
-import html2canvas from 'html2canvas';
 import React, { useState, useEffect, useRef } from 'react';
-import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, format } from 'date-fns';
+import html2canvas from 'html2canvas';
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, format, addYears, subYears } from 'date-fns';
 import fetchWorldwideHolidays from '../utils/fetchHolidays';
 import styled from '@emotion/styled';
 import { Global, css } from '@emotion/react';
@@ -133,10 +133,17 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
   const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [showMonthDropdown, setShowMonthDropdown] = useState(false);
+  const [showYearDropdown, setShowYearDropdown] = useState(false);
+
   const { labels } = useLabels();
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const calendarRef = useRef(null);
+
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const years = Array.from({ length: 21 }, (_, index) => new Date().getFullYear() - 10 + index);
 
   useEffect(() => {
     const currentYear = currentMonth.getFullYear();
@@ -159,8 +166,27 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
   const endDay = endOfWeek(endOfMonth(currentMonth));
   const monthDays = eachDayOfInterval({ start: startDay, end: endDay });
 
+  const handleMonthChange = (monthIndex: number) => {
+    const newDate = new Date(currentMonth.setMonth(monthIndex));
+    setCurrentMonth(newDate);
+    setShowMonthDropdown(false);
+  };
+
+  const isDayInCurrentMonth = (day: Date) => {
+    return currentMonth.getMonth() === day.getMonth();
+  };
+
+  const handleYearChange = (year: number) => {
+    const newDate = new Date(currentMonth.setFullYear(year));
+    setCurrentMonth(newDate);
+    setShowYearDropdown(false);
+    fetchWorldwideHolidays(year).then(setHolidays);
+  };
+
+
   const handleDownloadImage = async () => {
     const calendarElement = calendarRef.current;
+    console.log('i was clicked inside', calendarElement)
     if (calendarElement) {
       const canvas = await html2canvas(calendarElement);
       const image = canvas.toDataURL('image/png');
@@ -274,8 +300,31 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
           value={searchQuery}
           onChange={handleSearchChange}
         />
-        {/* Placeholder for Year and Month dropdowns */}
-        {/* Implement the dropdowns here */}
+        <Dropdown>
+          <DropdownButton onClick={() => setShowMonthDropdown(!showMonthDropdown)}>
+            {format(currentMonth, "MMMM")}
+          </DropdownButton>
+          {showMonthDropdown && (
+            <DropdownContent className="show">
+              {months.map((month, index) => (
+                <div key={month} onClick={() => handleMonthChange(index)}>{month}</div>
+              ))}
+            </DropdownContent>
+          )}
+        </Dropdown>
+
+        <Dropdown>
+          <DropdownButton onClick={() => setShowYearDropdown(!showYearDropdown)}>
+            {format(currentMonth, "yyyy")}
+          </DropdownButton>
+          {showYearDropdown && (
+            <DropdownContent className="show">
+              {years.map(year => (
+                <div key={year} onClick={() => handleYearChange(year)}>{year}</div>
+              ))}
+            </DropdownContent>
+          )}
+        </Dropdown>
         <button onClick={() => setIsLabelModalOpen(true)}>Manage Labels</button>
         <Dropdown ref={dropdownRef}>
         <DropdownButton onClick={() => setShowDropdown(!showDropdown)}>Filter by Labels</DropdownButton>
@@ -311,13 +360,13 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
         <LabelCreationModal onClose={() => setIsLabelModalOpen(false)} />
       )}
       <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
-        <Grid>
+        <Grid ref={calendarRef}>
           {monthDays.map((day, dayIndex) => {
+            const dayInCurrentMonth = isDayInCurrentMonth(day);
             const formattedDate = format(day, 'yyyy-MM-dd');
             const dayTasks = filteredTasks.filter(task => task.date === formattedDate);
             const holiday = holidays.find(holiday => holiday.date === formattedDate);
-            const isDecember27 = formattedDate.endsWith('-12-27');
-            const holidayText = isDecember27 ? holiday?.localName : holiday?.name;
+            const holidayText = holiday ? (formattedDate.endsWith('-12-27') ? holiday.localName : holiday.name) : null;
 
             return (
               <Droppable droppableId={formattedDate} key={dayIndex}>
@@ -326,6 +375,10 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     onClick={() => !isDragging && onDayClick(formattedDate)}
+                    style={{
+                      backgroundColor: dayInCurrentMonth ? '#fff' : '#f0f0f0',
+                      color: dayInCurrentMonth ? 'initial' : '#d3d3d3',
+                    }}
                   >
                     <div>{day.getDate()}</div>
                     {holiday && <HolidayName>{holidayText}</HolidayName>}
@@ -344,18 +397,15 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
                                 onTaskClick(task);
                               }
                             }}
-                        >
-                          <LabelContainer>
+                          >
+                            {/* Label tags and task title */}
+                            <LabelContainer>
                             {task.labelIds.map((labelId, index, array) => {
                               const label = labels.find((label) => label.id === labelId);
-                              
                               const containerWidth = 100;
-
                               const totalSpacing = (array.length * 10) + ((array.length - 1) * 10);
                               const availableWidth = containerWidth - totalSpacing;
-
                               const dynamicWidth = availableWidth / array.length;
-
                               return label ? (
                                 <LabelTag 
                                   key={label.id} 
@@ -365,10 +415,7 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
                               ) : null;
                             })}
                           </LabelContainer>
-
-
                             {task.title}
-                            
                           </TaskItem>
                         )}
                       </Draggable>
@@ -378,7 +425,6 @@ const Calendar: React.FC<CalendarProps> = ({ onDayClick, tasks, onTaskClick, set
                 )}
               </Droppable>
             );
-    
           })}
         </Grid>
       </DragDropContext>
