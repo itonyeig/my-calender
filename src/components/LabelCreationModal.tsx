@@ -1,6 +1,6 @@
 import React from 'react';
-import { Modal } from './Modal'; // Import the reusable Modal component
-import LabelCreationForm from './LabelCreationForm'; // The form for creating a new label
+import { Modal } from './Modal';
+import LabelCreationForm from './LabelCreationForm';
 
 interface LabelCreationModalProps {
   onClose: () => void;

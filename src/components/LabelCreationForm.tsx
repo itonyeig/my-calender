@@ -7,7 +7,6 @@ interface LabelCreationFormProps {
   onClose: () => void;
 }
 
-// Define the validation schema using Yup
 const labelValidationSchema = Yup.object().shape({
   name: Yup.string().required('Label name is required'),
   color: Yup.string().required('Color is required'),
